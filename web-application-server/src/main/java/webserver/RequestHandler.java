@@ -34,33 +34,29 @@ public class RequestHandler extends Thread {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
         	
         	BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+        	byte[] body = null;
+        	
+        	//요청 header line 추출
         	String line = reader.readLine();
         	log.debug("request line : {}", line);
         	
         	if(line == null) {
         		return;
         	}
-        	
         	String[] tokens = line.split(" ");
         	
-        	//요청경로가 /user/create이면 User클래스에 요청파라미터 값 저장
-        	int reqStrIndex = tokens[1].indexOf("?");
-        	String reqPath = tokens[1].substring(0,reqStrIndex);
-        	String params = tokens[1].substring(reqStrIndex+1);
+        	if(tokens[0].equals("GET")) {
+        		body = processGET(tokens[1]);
+        	}
         	
-        	//요청 파라미터 파싱
-        	Map<String,String> reqParamInfo = HttpRequestUtils.parseQueryString(params);
-        	
-        	//User클래스에 저장
-        	User user = saveUserInfo(reqParamInfo);
-        	log.debug(user.toString());
+        	if(tokens[0].equals("POST")) {
+//        		processPOST();
+        	}
         	
         	printHeader(line, reader);
         	
-        	
-        	
             DataOutputStream dos = new DataOutputStream(out);
-            byte[] body = Files.readAllBytes(new File("./webapp"+tokens[1]).toPath());
+//            byte[] body = Files.readAllBytes(new File("./webapp"+reqPath).toPath());
             
             response200Header(dos, body.length);
             responseBody(dos, body);
@@ -97,8 +93,42 @@ public class RequestHandler extends Thread {
     }
     
     private User saveUserInfo(Map<String,String> reqUserInfo) {
-    	User user = new User(reqUserInfo.get("userId"), reqUserInfo.get("password"), reqUserInfo.get("name"), reqUserInfo.get("email"));
+    	User user = new User(reqUserInfo.get("userId")
+    							, reqUserInfo.get("password")
+    							, reqUserInfo.get("name")
+    							, reqUserInfo.get("email"));
     	return user;
+    }
+    
+    private byte[] processGET(String requestStr) throws IOException {
+    	//요청경로가 /user/create이면 User클래스에 요청파라미터 값 저장
+    	String reqPath = requestStr;
+    	String params = null;
+    	
+    	int reqStrIndex = requestStr.indexOf("?");
+    	
+    	if(reqStrIndex != -1) {
+        	reqPath = requestStr.substring(0,reqStrIndex);
+           	params = requestStr.substring(reqStrIndex+1);
+    	}
+    	
+        if(reqPath.equals("/user/create")) {
+        	 Map<String,String> reqParamInfo = null;
+        	
+        	//요청 파라미터 파싱
+        	reqParamInfo = HttpRequestUtils.parseQueryString(params);
+        	
+            //User클래스에 저장
+            User user = saveUserInfo(reqParamInfo);
+            log.info(user.toString());
+        }
+    	
+        return Files.readAllBytes(new File("./webapp"+reqPath).toPath());
+    }
+    
+    //POST방식 처리 메서드
+    private void processPOST(String requestStr) {
+    	
     }
     
 }

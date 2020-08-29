@@ -15,6 +15,7 @@ public class StringUtilsTests {
 	public void 문자열_split_테스트() {
 		String str = "GET /index.html HTTP/1.1";
 		String[] tokens = str.split(" ");
+		
 		assertThat(tokens[1], is("/index.html"));
 	}
 	
@@ -36,6 +37,7 @@ public class StringUtilsTests {
 		String params = "userId=kshyun&password=tmdgus&name=seunghyun&email=ksh94%40naver.com";
 		Map<String,String> reqUserInfo = HttpRequestUtils.parseQueryString(params);
 		User user = new User(reqUserInfo.get("userId"), reqUserInfo.get("password"), reqUserInfo.get("name"), reqUserInfo.get("email"));
+		
 		assertThat(user.getUserId(), is("kshyun"));
 		assertThat(user.getPassword(), is("tmdgus"));
 		assertThat(user.getName(), is("seunghyun"));
