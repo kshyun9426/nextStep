@@ -9,9 +9,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import model.User;
+import util.HttpRequestUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -39,13 +43,25 @@ public class RequestHandler extends Thread {
         	
         	String[] tokens = line.split(" ");
         	
-        	while(!line.equals("")) {
-        		line = reader.readLine();
-        		log.debug("header : {}", line);
-        	}
+        	//요청경로가 /user/create이면 User클래스에 요청파라미터 값 저장
+        	int reqStrIndex = tokens[1].indexOf("?");
+        	String reqPath = tokens[1].substring(0,reqStrIndex);
+        	String params = tokens[1].substring(reqStrIndex+1);
+        	
+        	//요청 파라미터 파싱
+        	Map<String,String> reqParamInfo = HttpRequestUtils.parseQueryString(params);
+        	
+        	//User클래스에 저장
+        	User user = saveUserInfo(reqParamInfo);
+        	log.debug(user.toString());
+        	
+        	printHeader(line, reader);
+        	
+        	
         	
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = Files.readAllBytes(new File("./webapp"+tokens[1]).toPath());
+            
             response200Header(dos, body.length);
             responseBody(dos, body);
         } catch (IOException e) {
@@ -72,4 +88,40 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
+    
+    private void printHeader(String line, BufferedReader reader) throws IOException {
+    	while(!line.equals("")) {
+    		line = reader.readLine();
+    		log.debug("header : {}", line);
+    	}
+    }
+    
+    private User saveUserInfo(Map<String,String> reqUserInfo) {
+    	User user = new User(reqUserInfo.get("userId"), reqUserInfo.get("password"), reqUserInfo.get("name"), reqUserInfo.get("email"));
+    	return user;
+    }
+    
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
