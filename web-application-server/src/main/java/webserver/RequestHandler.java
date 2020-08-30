@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import model.User;
 import util.HttpRequestUtils;
+import util.HttpRequestUtils.Pair;
+import util.IOUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -45,18 +47,18 @@ public class RequestHandler extends Thread {
         	}
         	String[] tokens = line.split(" ");
         	
+        	
         	if(tokens[0].equals("GET")) {
-        		body = processGET(tokens[1]);
+        		body = processGET(line, reader, tokens[1]);
         	}
         	
         	if(tokens[0].equals("POST")) {
-//        		processPOST();
+        		processPOST(tokens[1], reader, tokens[1]);
         	}
-        	
-        	printHeader(line, reader);
         	
             DataOutputStream dos = new DataOutputStream(out);
 //            byte[] body = Files.readAllBytes(new File("./webapp"+reqPath).toPath());
+            
             
             response200Header(dos, body.length);
             responseBody(dos, body);
@@ -75,6 +77,18 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
+    
+    private void response302Header(DataOutputStream dos, int lengthOfBodyContent, String redirectUrl) {
+        try {
+            dos.writeBytes("HTTP/1.1 302 FOUND \r\n");
+            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Location: "+ redirectUrl +"\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
 
     private void responseBody(DataOutputStream dos, byte[] body) {
         try {
@@ -84,13 +98,7 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
-    
-    private void printHeader(String line, BufferedReader reader) throws IOException {
-    	while(!line.equals("")) {
-    		line = reader.readLine();
-    		log.debug("header : {}", line);
-    	}
-    }
+   
     
     private User saveUserInfo(Map<String,String> reqUserInfo) {
     	User user = new User(reqUserInfo.get("userId")
@@ -100,7 +108,14 @@ public class RequestHandler extends Thread {
     	return user;
     }
     
-    private byte[] processGET(String requestStr) throws IOException {
+    //GET방식 처리 메서드
+    private byte[] processGET(String line, BufferedReader reader, String requestStr) throws IOException {
+    	
+    	while(!line.equals("")) {
+    		line = reader.readLine();
+    		log.debug("header : {}", line);
+    	}
+    	
     	//요청경로가 /user/create이면 User클래스에 요청파라미터 값 저장
     	String reqPath = requestStr;
     	String params = null;
@@ -112,25 +127,55 @@ public class RequestHandler extends Thread {
            	params = requestStr.substring(reqStrIndex+1);
     	}
     	
+    	//요청 경로가 /user/create이라면 User객체에 요청 정보 저장
         if(reqPath.equals("/user/create")) {
-        	 Map<String,String> reqParamInfo = null;
-        	
         	//요청 파라미터 파싱
-        	reqParamInfo = HttpRequestUtils.parseQueryString(params);
+        	Map<String,String> reqParamInfo = HttpRequestUtils.parseQueryString(params);
         	
             //User클래스에 저장
             User user = saveUserInfo(reqParamInfo);
             log.info(user.toString());
+            
+            reqPath = "/index.html";
         }
-    	
+
         return Files.readAllBytes(new File("./webapp"+reqPath).toPath());
     }
     
     //POST방식 처리 메서드
-    private void processPOST(String requestStr) {
+    private void processPOST(String line, BufferedReader reader, String reqPath) throws IOException {
+    	//content-length의 값 추출해야함
+    	int contentLength = 0;
+    	
+    	//Header 정보 
+    	while(!line.equals("")) {
+    		line = reader.readLine();
+    		
+    		//Header가 마지막이라면
+    		if(line.isEmpty()) {
+    			break;
+    		}
+    		log.debug("header : {}", line);
+    		
+    		Pair keyValue = HttpRequestUtils.parseHeader(line);
+    		if(keyValue.getKey().equals("Content-Length")) {
+    			contentLength = Integer.parseInt(keyValue.getValue());
+    		}
+    	}
+    	
+    	//요청 경로가 /user/create이라면 User객체에 요청 정보 저장
+    	if(reqPath.equals("/user/create")) {
+    		String bodyInfo = IOUtils.readData(reader, contentLength);
+        	log.debug("body : {}", bodyInfo);
+        	Map<String,String> reqParamInfo = HttpRequestUtils.parseQueryString(bodyInfo);
+        	
+        	 //User클래스에 저장
+            User user = saveUserInfo(reqParamInfo);
+            log.info(user.toString());
+    	}
     	
     }
-    
+   
 }
 
 
