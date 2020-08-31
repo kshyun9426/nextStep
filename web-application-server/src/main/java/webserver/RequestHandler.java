@@ -14,6 +14,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import db.DataBase;
 import model.User;
 import util.HttpRequestUtils;
 import util.HttpRequestUtils.Pair;
@@ -36,7 +37,7 @@ public class RequestHandler extends Thread {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
         	
         	BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-        	byte[] body = null;
+        	String jspFilePath = null;
         	
         	//요청 header line 추출
         	String line = reader.readLine();
@@ -49,19 +50,23 @@ public class RequestHandler extends Thread {
         	
         	
         	if(tokens[0].equals("GET")) {
-        		body = processGET(line, reader, tokens[1]);
+        		jspFilePath = processGET(line, reader, tokens[1]);
         	}
         	
         	if(tokens[0].equals("POST")) {
-        		processPOST(tokens[1], reader, tokens[1]);
+        		jspFilePath = processPOST(tokens[1], reader, tokens[1]);
         	}
         	
             DataOutputStream dos = new DataOutputStream(out);
-//            byte[] body = Files.readAllBytes(new File("./webapp"+reqPath).toPath());
-            
-            
-            response200Header(dos, body.length);
-            responseBody(dos, body);
+            if(tokens[1].contains("/user/create")) {
+            	byte[] body = Files.readAllBytes(new File("./webapp/index.html").toPath());
+            	response302Header(dos, body.length, "/index.html");
+            	responseBody(dos, body);
+            }else {
+            	byte[] body = Files.readAllBytes(new File("./webapp"+tokens[1]).toPath());
+            	response200Header(dos, body.length);
+            	responseBody(dos, body);
+            }
         } catch (IOException e) {
             log.error(e.getMessage());
         }
@@ -100,7 +105,7 @@ public class RequestHandler extends Thread {
     }
    
     
-    private User saveUserInfo(Map<String,String> reqUserInfo) {
+    private User mapUserInfo(Map<String,String> reqUserInfo) {
     	User user = new User(reqUserInfo.get("userId")
     							, reqUserInfo.get("password")
     							, reqUserInfo.get("name")
@@ -109,8 +114,8 @@ public class RequestHandler extends Thread {
     }
     
     //GET방식 처리 메서드
-    private byte[] processGET(String line, BufferedReader reader, String requestStr) throws IOException {
-    	
+    private String processGET(String line, BufferedReader reader, String requestStr) throws IOException {
+    	String resultJspFilePath = null;
     	while(!line.equals("")) {
     		line = reader.readLine();
     		log.debug("header : {}", line);
@@ -119,6 +124,7 @@ public class RequestHandler extends Thread {
     	//요청경로가 /user/create이면 User클래스에 요청파라미터 값 저장
     	String reqPath = requestStr;
     	String params = null;
+    	User user = null;
     	
     	int reqStrIndex = requestStr.indexOf("?");
     	
@@ -133,20 +139,18 @@ public class RequestHandler extends Thread {
         	Map<String,String> reqParamInfo = HttpRequestUtils.parseQueryString(params);
         	
             //User클래스에 저장
-            User user = saveUserInfo(reqParamInfo);
+            user = mapUserInfo(reqParamInfo);
             log.info(user.toString());
-            
-            reqPath = "/index.html";
+            resultJspFilePath = "/index.html";
         }
-
-        return Files.readAllBytes(new File("./webapp"+reqPath).toPath());
+        return resultJspFilePath;
     }
     
     //POST방식 처리 메서드
-    private void processPOST(String line, BufferedReader reader, String reqPath) throws IOException {
+    private String processPOST(String line, BufferedReader reader, String reqPath) throws IOException {
     	//content-length의 값 추출해야함
     	int contentLength = 0;
-    	
+    	String resultJspFilePath = null;
     	//Header 정보 
     	while(!line.equals("")) {
     		line = reader.readLine();
@@ -163,17 +167,33 @@ public class RequestHandler extends Thread {
     		}
     	}
     	
+    	Map<String,String> reqParamInfo = getBodyInfo(reader,contentLength);
+    	
     	//요청 경로가 /user/create이라면 User객체에 요청 정보 저장
     	if(reqPath.equals("/user/create")) {
-    		String bodyInfo = IOUtils.readData(reader, contentLength);
-        	log.debug("body : {}", bodyInfo);
-        	Map<String,String> reqParamInfo = HttpRequestUtils.parseQueryString(bodyInfo);
-        	
         	 //User클래스에 저장
-            User user = saveUserInfo(reqParamInfo);
+            User user = mapUserInfo(reqParamInfo);
             log.info(user.toString());
+            DataBase.addUser(user);
+            resultJspFilePath = "/index.html";
+    	}else if(reqPath.equals("/user/login")) {
+    		User loginUser = DataBase.findUserById(reqParamInfo.get("userId"));
+    		
+    		//회원가입이 되어있다면 
+    		if(loginUser != null) {
+    			
+    			resultJspFilePath = "/index.html";
+    		}else {
+    			resultJspFilePath = "./login_failed.html";
+    		}
     	}
-    	
+    	return resultJspFilePath;
+    }
+    
+    private Map<String,String> getBodyInfo(BufferedReader reader, int contentLength) throws IOException {
+    	String bodyInfo = IOUtils.readData(reader, contentLength);
+		log.debug("body: {}", bodyInfo);
+		return HttpRequestUtils.parseQueryString(bodyInfo);
     }
    
 }
