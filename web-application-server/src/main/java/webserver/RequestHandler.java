@@ -67,6 +67,7 @@ public class RequestHandler extends Thread {
     }
     
     private HeaderInfoDTO extractReqUrl(String headerLine) {
+    	
     	HeaderInfoDTO result = new HeaderInfoDTO();
     	log.debug("request line : {}", headerLine);
     	
