@@ -180,6 +180,7 @@ public class RequestHandler_book extends Thread {
     	return Integer.parseInt(headerTokens[1].trim());
     }
 
+    /*
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
@@ -190,7 +191,9 @@ public class RequestHandler_book extends Thread {
             log.error(e.getMessage());
         }
     }
+    */
     
+    /*
     private void response302Header(DataOutputStream dos, String url) {
     	try {
     		dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
@@ -199,9 +202,10 @@ public class RequestHandler_book extends Thread {
     	}catch(IOException e) {
     		log.error(e.getMessage());
     	}
-    	
     }
+    */
 
+    /*
     private void responseBody(DataOutputStream dos, byte[] body) {
         try {
             dos.write(body, 0, body.length);
@@ -210,7 +214,7 @@ public class RequestHandler_book extends Thread {
             log.error(e.getMessage());
         }
     }
-   
+   */
    
 }
 
