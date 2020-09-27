@@ -6,6 +6,9 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import http.HttpMethod;
+import http.RequestLine;
+
 public class RequestLineTest {
 	
 	@Test
